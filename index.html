@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gesti portiere</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#17221b">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#eef0e8;--panel:#fff;--ink:#17221b;--mute:#5d6b61;--line:#cfd6c8;--r:#2f5d9e;--p:#b8741a;--d:#2c7a4b;--g:#b83232;--f:#3c4a40;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121a15;--panel:#1b261f;--ink:#e8eee9;--mute:#9aa99f;--line:#2f3d34;--r:#6d9be0;--p:#e0a050;--d:#58c183;--g:#ee6f6f;--f:#9fb0a5;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121a15;--panel:#1b261f;--ink:#e8eee9;--mute:#9aa99f;--line:#2f3d34;--r:#6d9be0;--p:#e0a050;--d:#58c183;--g:#ee6f6f;--f:#9fb0a5;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:10px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:10}
+.clock{font-size:44px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-1px;line-height:1}
+.half{font-size:13px;color:var(--mute)}
+.main{margin-left:auto;padding:12px 14px;border-radius:10px;border:0;background:var(--ink);color:var(--bg);font:600 15px inherit;font-family:inherit;cursor:pointer}
+main{max-width:720px;margin:0 auto;padding:12px 14px 40px}
+h2{font-size:14px;margin:18px 0 8px;color:var(--mute);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.g{border:2px solid var(--c);background:var(--panel);color:var(--ink);border-radius:12px;padding:12px 10px;min-height:72px;text-align:left;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;gap:2px}
+.g b{font-size:22px;color:var(--c)}
+.g span{font-size:12.5px;color:var(--mute);line-height:1.25}
+.g:active{background:var(--c)}.g:active b,.g:active span{color:#fff}
+.g:disabled{opacity:.35}
+.wide{grid-column:1/-1}
+.bar{display:flex;gap:8px;margin-top:12px}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;padding:10px 12px;font:inherit;cursor:pointer}
+.btn:focus-visible,.g:focus-visible,.main:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--r);outline-offset:2px}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+li .t{font-variant-numeric:tabular-nums;font-weight:600;min-width:62px}
+li .c{font-weight:700;min-width:58px}
+li .n{color:var(--mute);font-size:13px;flex:1}
+li button{border:0;background:none;color:var(--mute);font-size:20px;cursor:pointer;padding:4px 8px}
+.empty{color:var(--mute);padding:10px 0}
+.row{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0}
+label{display:flex;flex-direction:column;font-size:13px;color:var(--mute);gap:3px}
+input{width:110px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font:inherit}
+textarea{width:100%;height:180px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;margin-top:8px}
+.hint{font-size:13px;color:var(--mute);margin:6px 0}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .15s}
+#toast.on{opacity:1}
+@media (min-width:560px){.grid{grid-template-columns:repeat(4,1fr)}}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<div class="top">
+  <div><div class="clock" id="clock">00:00</div><div class="half" id="half">Partita non iniziata</div></div>
+  <button class="main" id="main">Avvia 1° tempo</button>
+</div>
+<main>
+  <div id="pads"></div>
+  <div class="bar">
+    <button class="btn" id="undo">Annulla ultimo</button>
+    <button class="btn" id="reset">Nuova partita</button>
+  </div>
+
+  <h2>Eventi registrati</h2>
+  <ul id="list"></ul>
+
+  <h2>Esporta per il video</h2>
+  <p class="hint">Indica a che punto del video iniziano i due tempi. Se il video è continuo, il 2° tempo parte dopo l’intervallo.</p>
+  <div class="row">
+    <label>Inizio 1° tempo nel video<input id="o1" value="0:00" inputmode="numeric"></label>
+    <label>Inizio 2° tempo nel video<input id="o2" value="0:00" inputmode="numeric"></label>
+    <label>Secondi prima del gesto<input id="pre" value="5" inputmode="numeric"></label>
+  </div>
+  <div class="bar">
+    <button class="btn" data-x="ff">Capitoli FFmpeg</button>
+    <button class="btn" data-x="yt">Timestamp YouTube</button>
+    <button class="btn" data-x="csv">CSV</button>
+  </div>
+  <textarea id="out" readonly placeholder="Scegli un formato: il testo appare qui."></textarea>
+  <div class="bar"><button class="btn" id="copy">Copia testo</button><button class="btn" id="dl">Scarica file</button></div>
+  <p class="hint">Capitoli in un MP4: salva il testo come capitoli.txt e lancia<br><code>ffmpeg -i partita.mp4 -i capitoli.txt -map_metadata 1 -codec copy partita_capitoli.mp4</code></p>
+</main>
+<div id="toast"></div>
+<script>
+var G=[
+ ["Rinvii dal fondo","--r",[["RFC","Rinvio dal fondo calciato"],["RFAPS","Rinvio dal fondo, passaggio sinistra"],["RFAPC","Rinvio dal fondo, passaggio centrale"],["RFAPD","Rinvio dal fondo, passaggio destra"]]],
+ ["Gioco con i piedi","--f",[["CVR","Calcio al volo su retropassaggio"],["CL","Calcio lungo"]]],
+ ["Uscite e intercetti","--p",[["INT","Intercetto"],["UA","Uscita alta"],["UB","Uscita bassa"]]],
+ ["Parate","--d",[["PP","Parata in presa"],["PT","Parata in tuffo"]]],
+ ["Goal","--g",[["GOAL","Goal subito"],["GF","Goal fatto"]]]
+];
+var NAME={};G.forEach(function(g){g[2].forEach(function(x){NAME[x[0]]=x[1]})});
+var st={phase:0,base:0,t0:0,ev:[]};
+var $=function(i){return document.getElementById(i)};
+function save(){try{localStorage.setItem("gk-state",JSON.stringify({phase:st.phase,base:st.phase==1||st.phase==3?el():st.base,ev:st.ev}))}catch(e){}}
+function load(){try{var s=JSON.parse(localStorage.getItem("gk-state"));if(s&&s.ev){st.ev=s.ev;st.phase=s.phase;st.base=s.base;if(st.phase==1||st.phase==3){st.phase=st.phase==1?2:4;}}}catch(e){}}
+function running(){return st.phase==1||st.phase==3}
+function el(){return running()?st.base+Date.now()-st.t0:st.base}
+function f(sec){var m=Math.floor(sec/60),s=sec%60;return String(m).padStart(2,"0")+":"+String(s).padStart(2,"0")}
+function half(){return st.phase>=3?2:1}
+function mt(h,s){return (h==2?2700:0)+s}
+function build(){
+  var h="";
+  G.forEach(function(g){
+    if(g[0])h+="<h2>"+g[0]+"</h2>";
+    h+='<div class="grid">';
+    g[2].forEach(function(x){h+='<button class="g'+(g[2].length==1?" wide":"")+'" style="--c:var('+g[1]+')" data-c="'+x[0]+'"><b>'+x[0]+"</b><span>"+x[1]+"</span></button>"});
+    h+="</div>";
+  });
+  $("pads").innerHTML=h;
+  $("pads").onclick=function(e){var b=e.target.closest("button");if(b)add(b.dataset.c)};
+}
+function toast(t){var e=$("toast");e.textContent=t;e.className="on";clearTimeout(toast.t);toast.t=setTimeout(function(){e.className=""},1100)}
+function add(c){
+  if(!running()){toast("Avvia il tempo per registrare");return}
+  var s=Math.floor(el()/1000);
+  st.ev.push({h:half(),s:s,c:c});save();draw();
+  try{navigator.vibrate&&navigator.vibrate(30)}catch(e){}
+  toast(c+" "+f(mt(half(),s)));
+}
+function draw(){
+  var labels=["Avvia 1° tempo","Fine 1° tempo","Avvia 2° tempo","Fine partita","Partita finita"];
+  var texts=["Partita non iniziata","1° tempo","Intervallo","2° tempo","Partita finita"];
+  $("main").textContent=labels[st.phase];
+  $("main").disabled=st.phase==4;
+  $("half").textContent=texts[st.phase];
+  $("clock").textContent=f(mt(half(),Math.floor(el()/1000)));
+  document.querySelectorAll(".g").forEach(function(b){b.disabled=!running()});
+  var l=$("list");
+  if(!st.ev.length){l.innerHTML='<li class="empty">Nessun evento ancora. Avvia il tempo e tocca un gesto.</li>';return}
+  var h="";
+  for(var i=st.ev.length-1;i>=0;i--){var e=st.ev[i];
+    h+='<li><span class="t">'+f(mt(e.h,e.s))+'</span><span class="c">'+e.c+'</span><span class="n">'+NAME[e.c]+'</span><button data-i="'+i+'" aria-label="Elimina evento">×</button></li>';}
+  l.innerHTML=h;
+}
+$("list").onclick=function(e){var b=e.target.closest("button");if(!b)return;st.ev.splice(+b.dataset.i,1);save();draw()};
+$("main").onclick=function(){
+  if(st.phase==0||st.phase==2){st.phase++;st.base=0;st.t0=Date.now()}
+  else if(running()){st.base=el();st.phase++}
+  save();draw();
+};
+$("undo").onclick=function(){var e=st.ev.pop();if(e)toast("Annullato "+e.c);save();draw()};
+$("reset").onclick=function(){
+  if(st.ev.length&&!confirm("Cancellare tutti gli eventi e ripartire?"))return;
+  st={phase:0,base:0,t0:0,ev:[]};save();draw();$("out").value="";
+};
+function sec(v){var p=String(v).trim().split(":").map(Number);if(p.some(isNaN))return 0;return p.length==3?p[0]*3600+p[1]*60+p[2]:p.length==2?p[0]*60+p[1]:p[0]}
+function vt(e){var o=e.h==2?sec($("o2").value):sec($("o1").value);return Math.max(0,o+e.s-sec($("pre").value))}
+function hms(s){var h=Math.floor(s/3600),m=Math.floor(s%3600/60);return (h?h+":"+String(m).padStart(2,"0"):m)+":"+String(s%60).padStart(2,"0")}
+var lastK="";
+function exp(k){lastK=k;
+  var ev=st.ev.slice().sort(function(a,b){return vt(a)-vt(b)}),t="";
+  if(!ev.length){$("out").value="Nessun evento da esportare.";return}
+  if(k=="ff"){t=";FFMETADATA1\n";ev.forEach(function(e,i){var s=vt(e)*1000,n=i<ev.length-1?vt(ev[i+1])*1000:s+5000;if(n<=s)n=s+1000;
+    t+="[CHAPTER]\nTIMEBASE=1/1000\nSTART="+s+"\nEND="+n+"\ntitle="+f(mt(e.h,e.s))+" "+e.c+" "+NAME[e.c]+"\n"})}
+  if(k=="yt"){ev.forEach(function(e){t+=hms(vt(e))+" "+e.c+" "+NAME[e.c]+"\n"})}
+  if(k=="csv"){t="tempo,minuto_partita,codice,gesto,secondo_video\n";ev.forEach(function(e){t+=e.h+","+f(mt(e.h,e.s))+","+e.c+","+NAME[e.c]+","+vt(e)+"\n"})}
+  $("out").value=t;
+}
+document.querySelectorAll("[data-x]").forEach(function(b){b.onclick=function(){exp(b.dataset.x)}});
+$("copy").onclick=function(){
+  var o=$("out");o.select();
+  try{navigator.clipboard.writeText(o.value).then(function(){toast("Copiato")},function(){document.execCommand("copy");toast("Copiato")})}
+  catch(e){try{document.execCommand("copy");toast("Copiato")}catch(x){toast("Seleziona e copia a mano")}}
+};
+$("dl").onclick=function(){
+  var v=$("out").value;if(!v||!lastK){toast("Scegli prima un formato");return}
+  var n={ff:"capitoli.txt",yt:"timestamp.txt",csv:"eventi.csv"}[lastK];
+  var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([v],{type:"text/plain"}));a.download=n;
+  document.body.appendChild(a);a.click();a.remove();toast("Scaricato "+n);
+};
+var wl=null;
+function wake(){try{if(running()&&navigator.wakeLock&&document.visibilityState=="visible")navigator.wakeLock.request("screen").then(function(l){wl=l}).catch(function(){})}catch(e){}}
+$("main").addEventListener("click",wake);
+document.addEventListener("visibilitychange",wake);
+try{if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js")}catch(e){}
+load();build();draw();
+setInterval(function(){if(running())$("clock").textContent=f(mt(half(),Math.floor(el()/1000)))},250);
+</script>
+</body>
+</html>
